@@ -1,0 +1,25 @@
+{
+  "name": "next-project",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@stomp/stompjs": "^7.0.0",
+    "@types/sockjs-client": "^1.5.1",
+    "isomorphic-unfetch": "^4.0.2",
+    "next": "^13.4.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sockjs-client": "^1.6.1"
+  },
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  },
+  "devDependencies": {
+    "@types/node": "20.1.4",
+    "@types/react": "18.2.6",
+    "typescript": "5.0.4"
+  }
+}
