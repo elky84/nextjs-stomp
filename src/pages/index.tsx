@@ -9,7 +9,7 @@ const Index = props => (
 );
 
 Index.getInitialProps = async function() {
-  return;
+  return {};
 };
 
 export default Index;

@@ -4,8 +4,7 @@ import SockJS from "sockjs-client";
 let stompClient: Client;
 
 export const connect = (
-  url: string,
-  onMessageReceived: (message: IMessage) => void
+  url: string
 ) => {
   const socket = new SockJS(url);
   stompClient = new Client({
@@ -17,7 +16,6 @@ export const connect = (
 
   stompClient.onConnect = () => {
     console.log("Connected to the STOMP server");
-    stompClient.subscribe("/topic/messages", onMessageReceived);
   };
 
   stompClient.onStompError = (frame) => {
@@ -27,13 +25,47 @@ export const connect = (
   stompClient.activate();
 };
 
+export const subscribe = (destination: string, onMessageReceived: (message: IMessage) => void) => {
+  if(!stompClient || !stompClient.connected) {
+    console.log("STOMP not connected");
+    return false;
+  }
+
+  stompClient.subscribe(`/topic/${destination}/res`, onMessageReceived);
+  return true;
+}
+
+export const unsubscribe = (destination: string) => {
+  if(!stompClient || !stompClient.connected) {
+    console.log("STOMP not connected");
+    return false;
+  }
+
+  stompClient.unsubscribe(`/topic/${destination}/res`);
+  return true;
+}
+
+
 export const disconnect = () => {
-  stompClient?.deactivate();
+  if(!stompClient || !stompClient.connected) {
+    console.log("STOMP not connected");
+    return false;
+  }
+
+  stompClient.deactivate();
+  return true;
 };
 
 export const sendMessage = (destination: string, body: string) => {
-  stompClient?.publish({
-    destination,
+  if(!stompClient || !stompClient.connected) {
+    console.log("STOMP not connected");
+    return false;
+  }
+
+  stompClient.publish({
+    destination: `/topic/${destination}/res`,
     body,
   });
+
+  return true;
 };
