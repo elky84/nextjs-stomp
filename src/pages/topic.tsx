@@ -1,12 +1,12 @@
 import React from "react";
-import Chat from "../components/Chat";
+import ChatTopic from "../components/ChatTopic";
 import { GetServerSideProps } from "next";
 
-const Index = () => (
-  <Chat/>
+const Page = () => (
+  <ChatTopic/>
 );
 
-export default Index;
+export default Page;
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => {
   return {

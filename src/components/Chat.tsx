@@ -1,94 +1,195 @@
 import { Message } from "@stomp/stompjs";
-import { ChangeEvent, useEffect, useState } from "react";
-import { connect, disconnect, sendMessage, subscribe, unsubscribe } from "../lib/websocket";
-import { useForm } from "react-hook-form";
+import { ChangeEvent, useState } from "react";
+import {
+  connect,
+  disconnect,
+  sendMessage,
+  subscribe,
+} from "../lib/websocket";
+
+type UserType = {
+  senderId: string;
+  receiverId: string;
+  channelCollection: string;
+  id: string;
+  created: string;
+  updated: string;
+};
+
+type PageType = {
+  page: number;
+  size: number;
+  total: number;
+  totalPage: number;
+};
+
+type MessageType = {
+  sender: string;
+  senderName: string;
+  receiver: string;
+  content: string;
+  id: string;
+  created: string;
+  updated: string;
+};
 
 const Chat = () => {
+
   const [messages, setMessages] = useState<string[]>([]);
   const [input, setInput] = useState("");
-  const [topic, setTopic] = useState("");
-  const [topics, setTopics] = useState<string[]>([]);
-  const [selectedTopic, setSelectedTopic] = useState<string>('');
 
-  const handleSelectTopicChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setSelectedTopic(event.target.value);
+  const [userId, setUserId] = useState("");
+
+  const [receiverId, setReceiverId] = useState("");
+  const [users, setUsers] = useState<string[]>([]);
+  const [selectedUser, setSelectedUser] = useState<string>("");
+
+  const [page, setPage] = useState(0);
+
+  const [loadEnd, setLoadEnd] = useState(false);
+
+  const tryConnect = () => {
+
+    connect("http://localhost:9090/ws", userId, () => {
+      subscribe(`/private/${userId}`, userId, onMessageReceived);
+      sendMessage(`/private/users`, {});
+    });
+  }
+
+  const tryDisconnect = () => {
+    disconnect();
+  }
+
+  const canLoadMore =
+    selectedUser && JSON.parse(selectedUser)?.value && !loadEnd;
+
+  const loadMore = () => {
+    if (canLoadMore) {
+      sendMessage(`/private/${JSON.parse(selectedUser).value}/messages`, {
+        page: page + 1,
+        size: 20,
+      });
+    }
   };
 
-  const {
-    handleSubmit,
-  } = useForm();
+  const handleSelectUserChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setSelectedUser(event.target.value);
+    const parse = JSON.parse(event.target.value);
+    if (parse.value) {
+      sendMessage(`/private/${parse.value}/messages`, { page: 0, size: 20 });
+    }
 
-  useEffect(() => {
-    connect("http://localhost:9090/ws");
-
-    return () => {
-      disconnect();
-    };
-  }, []);
+    setLoadEnd(false);
+  };
 
   const onMessageReceived = (message: Message) => {
-    setMessages((prevMessages) => [...prevMessages, message.body]);
+    const json = JSON.parse(message.body);
+    const id = json.id;
+    console.log("메시지 id", id);
+
+    if (id == "CHAT_MESSAGE") {
+      setMessages((prevMessages) => [
+        `${json.userName} >> ${json.content}`,
+        ...prevMessages,
+      ]);
+    } else if (id == "CHAT_MESSAGES") {
+      const page = json.page as PageType;
+      if (page.page == 0) {
+        setMessages([]);
+        onLog(`--- ${json.receiverId} 와의 이전 채팅 목록을 불러옵니다 ---`);
+      }
+
+      const messageList = json.messages as MessageType[];
+      if (page.page + 1 >= page.totalPage) {
+        setLoadEnd(true);
+      }
+
+      setPage(page.page);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        ...messageList.map((el) => `${el.senderName} >> ${el.content}`),
+      ]);
+    } else if (id == "USERS") {
+      console.log(json);
+      setUsers([]);
+
+      const users = json.users.content as UserType[];
+      setUsers(users.map((el) => el.receiverId));
+    } else if (id == "ADD_USER") {
+      console.log(json.user);
+      setUsers((prevUsers) => [...prevUsers, json.user.receiverId]);
+    } else if (id == "REMOVE_USER") {
+      console.log(json);
+      setUsers(users.filter((el) => el == json.userId));
+    }
   };
 
-  const onLog = (message : string) => {
-    setMessages((prevMessages) => [...prevMessages, message]);
-  }
+  const onLog = (message: string) => {
+    setMessages((prevMessages) => [message, ...prevMessages]);
+  };
 
   const send = () => {
-    if(!selectedTopic || !input)
-      return;
+    if (!input) return;
 
-    const {value} = JSON.parse(selectedTopic);
-    sendMessage(value, input);
+    if (!selectedUser) return;
+    const { value } = JSON.parse(selectedUser);
+    if (!value) {
+      console.log("채팅 대상을 선택해야 합니다");
+      return;
+    }
+
+    sendMessage(`/private/${value}`, { message: input });
     setInput("");
+    onLog(`${userId} >> ${input}`);
   };
 
-  const subscribeTopic = () => {
-    if(!topic)
-      return;
+  const addUser = () => {
+    if (!receiverId) return;
 
-    if(subscribe(topic, onMessageReceived)) {
-      setTopics((prevs) => [...prevs, topic]);
-      if(!selectedTopic) {
-        setSelectedTopic(JSON.stringify({value: topic, text: topic}));
-      }
-    }
-  }
+    sendMessage(`/private/${receiverId}/addUser`);
+  };
 
-  const unsubscribeTopic = () => {
-    if(!topic)
-      return;
+  const removeUser = () => {
+    if (!receiverId) return;
 
-    if(unsubscribe(topic)) {
-      setTopics((prevs) => prevs.filter(value => value !== topic));
-    }
-  }
+    sendMessage(`/private/${receiverId}/removeUser`);
+  };
 
   return (
-    <form onSubmit={handleSubmit(send)}>
+    <div>
       <h1 style={{ color: "var(--gray300)" }}>Chat Test</h1>
       <input
         type="text"
-        value={topic}
-        onChange={(e) => setTopic(e.target.value)}
-        placeholder="Type channel id"
+        value={userId}
+        onChange={(e) => setUserId(e.target.value)}
+        placeholder="Type user id"
         style={{ height: 32, borderRadius: 8, margin: 8 }}
       />
-      <button onClick={subscribeTopic}>Subscribe</button>
+      <button onClick={tryConnect}>connect</button>
+      <button onClick={tryDisconnect}>disconnect</button>
+
+      <input
+        type="text"
+        value={receiverId}
+        onChange={(e) => setReceiverId(e.target.value)}
+        placeholder="Type receiver id"
+        style={{ height: 32, borderRadius: 8, margin: 8 }}
+      />
+      <button onClick={addUser}>addUser</button>
 
       <select
-        style={{height: 32, borderRadius: 8, margin: 8}}
+        style={{ height: 32, borderRadius: 8, margin: 8 }}
         defaultValue=""
-        value={selectedTopic}
-        onChange={handleSelectTopicChange}
+        value={selectedUser}
+        onChange={handleSelectUserChange}
       >
         <option
           key={`option-none`}
-          value={JSON.stringify({ value: '', text: '' })}
+          value={JSON.stringify({ value: "", text: "" })}
         >
-          {''}
+          {""}
         </option>
-        {topics.map((value, index) => (
+        {users.map((value, index) => (
           <option
             key={`option-${index}`}
             value={JSON.stringify({ value: value, text: value })}
@@ -98,7 +199,7 @@ const Chat = () => {
         ))}
       </select>
 
-      <button onClick={unsubscribeTopic}>Unsubscribe</button>
+      <button onClick={removeUser}>RemoveUser</button>
 
       <input
         type="text"
@@ -115,7 +216,9 @@ const Chat = () => {
           </li>
         ))}
       </ul>
-    </form>
+
+      {canLoadMore && <button onClick={loadMore}>Load More</button>}
+    </div>
   );
 };
 
