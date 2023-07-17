@@ -77,7 +77,7 @@ const ChatTopic = () => {
         value={userId}
         onChange={(e) => setUserId(e.target.value)}
         placeholder="Type user id"
-        style={{ height: 32, borderRadius: 8, margin: 8 }}
+        style={{ margin: 8 }}
       />
       <button onClick={tryConnect}>connect</button>
       <button onClick={tryDisconnect}>disconnect</button>
@@ -87,12 +87,12 @@ const ChatTopic = () => {
         value={topic}
         onChange={(e) => setTopic(e.target.value)}
         placeholder="Type channel id"
-        style={{ height: 32, borderRadius: 8, margin: 8 }}
+        style={{ margin: 8 }}
       />
       <button onClick={subscribeTopic}>Subscribe</button>
 
       <select
-        style={{ height: 32, borderRadius: 8, margin: 8 }}
+        style={{ margin: 8 }}
         defaultValue=""
         value={selectedTopic}
         onChange={handleSelectTopicChange}
@@ -115,14 +115,16 @@ const ChatTopic = () => {
 
       <button onClick={unsubscribeTopic}>Unsubscribe</button>
 
-      <input
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Type your message..."
-        style={{ height: 32, borderRadius: 8, margin: 8 }}
-      />
-      <button onClick={send}>Send Message</button>
+      <div>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type your message..."
+          style={{ margin: 8 }}
+        />
+        <button onClick={send}>Send Message</button>
+      </div>
       <ul>
         {messages.map((message, index) => (
           <li key={index} style={{ padding: 8, color: "var(--gray300)" }}>
